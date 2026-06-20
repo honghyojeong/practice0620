@@ -1,0 +1,285 @@
+import streamlit as st
+import re
+
+# 페이지 설정
+st.set_page_config(page_title="서논술형 자동 채점 시스템", layout="wide")
+
+st.title("중등 국어 서논술형 자동 채점 및 피드백 시스템")
+
+# 사이드바 메뉴 구성
+set_choice = st.sidebar.selectbox(
+    "채점할 문항 세트를 선택하세요",
+    ["1세트: 사회적 촉진과 억제", "2세트: 겨울철 불청객 정전기", "3세트: 음식과 삶의 태도 비유"]
+)
+
+# 동의어 및 핵심어 사전 정의
+SYNONYMS = {
+    "혼자": ["혼자", "홀로", "독립된", "스스로", "타인 없이", "단독"],
+    "함께": ["함께", "같이", "모임", "도서관", "커피숍", "다른 사람"],
+    "정지": ["정지", "멈춤", "고여 있는", "이동하지 않는", "움직이지 않는"],
+    "음미": ["음미", "천천히", "여유", "깊이 있게", "살펴보는"]
+}
+
+def check_synonyms(text, key):
+    return any(word in text for word in SYNONYMS.get(key, [key]))
+
+# 선명한 파란색 배경 상자 스타일 정의
+blue_box_style = """
+<div style="background-color: #e8f0fe; padding: 20px; border-radius: 10px; border-left: 5px solid #1a73e8; color: #1f2023; line-height: 1.6; margin-bottom: 25px;">
+"""
+
+# ==========================================
+# 1. [가장 상단] 본문 지문 배치 (파란색 박스)
+# ==========================================
+if set_choice == "1세트: 사회적 촉진과 억제":
+    st.markdown(blue_box_style + """
+    기자: 심리학 용어인 사회적 촉진과 사회적 억제를 일상생활, 특히 우리의 학습에 어떻게 적용할 수 있을까요?<br>
+    전문가: 이 두 가지 개념을 알면 상황에 맞춰 유용하게 활용할 수 있습니다. 예를 들어, 비교적 쉬운 취미 생활이나 큰 노력을 들일 필요가 없는 과제를 할 때는 어떨까요?<br>
+    기자: 음, 그냥 집에서 편하게 혼자 하는 게 집중이 잘되지 않을까요?<br>
+    전문가: 그렇지 않습니다. 오히려 집에서 혼자 하는 것보다는 커피숍이나 도서관에서 하는 것이 더 효율적일 수 있습니다. 평소 친숙하고 좋아하는 과목이라면 공부 모임을 만들어서 다른 사람들과 함께 공부하는 것도 좋은 방법이죠.<br>
+    기자: 그렇다면 어렵고 복잡한 과제를 할 때는 어떻게 해야 하나요?<br>
+    전문가: 그럴 때는 반대입니다. 지나치게 어렵거나 도전이 필요한 과제는 충분히 연습하며 익숙해질 때까지 차분하게 혼자 집중하는 시간을 가지는 것이 좋습니다.
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.divider()
+
+    # ==========================================
+    # 2. [하단] 문항 배정 및 PDF 형식 동기화 (1세트)
+    # ==========================================
+    st.markdown("### 서논술형 문항 풀이")
+
+    # 서논술형 1번
+    st.write("서논술형 1. 윗글을 요약하여 표로 정리하였다. 빈칸 (1), (2), (3)에 들어갈 내용을 찾아 쓰시오.")
+    st.markdown("""
+    | 구분 | 과제의 특성 | 효율적인 학습 환경 및 방법 | 관련 심리학 용어 |
+    | :---: | :--- | :--- | :---: |
+    | 상황 A | 비교적 쉬운 취미 생활이나 큰 노력을 들일 필요가 없는 과제 | 커피숍이나 도서관에서 다른 사람들과 함께 공부함 | 사회적 촉진 |
+    | 상황 B | 지나치게 어렵거나 도전이 필요한 복잡한 과제 | (1) | (2) |
+    """)
+    st.caption("주의: (3)번 빈칸은 상황 B의 현상을 일컫는 공식 심리학 용어를 기술할 것")
+    
+    col1, col2, col3 = st.columns(3)
+    with col1: q1_1 = st.text_input("(1) 빈칸 입력:")
+    with col2: q1_2 = st.text_input("(2) 빈칸 입력:")
+    with col3: q1_3 = st.text_input("(3) 빈칸 입력:")
+        
+    st.divider()
+    
+    # 서논술형 2번
+    st.write("서논술형 2. 윗글을 활용하여 과제 난이도에 따른 효율적인 학습 전략에 대한 설명문을 작성하려 한다. 조건에 맞게 주어진 첫 문장에 이어지는 내용을 작성하시오.")
+    st.info("과제의 특성과 난이도에 따라 우리의 학습 효율을 높이는 방법은 다르게 적용되어야 한다.")
+    
+    with st.container(border=True):
+        st.write("📋 작성 조건")
+        st.caption("⚠️ 서로 다른 2가지의 설명 방법을 사용하여, 주어진 문장에 이어지는 문장을 (1), (2)에 각각 하나씩 작성할 것.")
+        st.caption("⚠️ 윗글에 제시된 내용만을 활용하여 문장을 구성할 것. 외부 배경지식을 활용할 경우 인정하지 않음.")
+        st.caption("⚠️ 각 문장의 끝에 자신이 사용한 설명 방법의 명칭을 괄호에 넣어 표기할 것.")
+
+    q2_1 = st.text_area("(1)")
+    q2_2 = st.text_area("(2)")
+    
+    st.divider()
+    
+    # 서논술형 3번
+    st.write("서논술형 3. 윗글을 바탕으로 상황에 맞는 학습 공간 선택법을 설명하는 영상을 제작하려 한다. 물음에 답하시오.")
+    with st.container(border=True):
+        st.write("✨ 보기 - 영상 기획안")
+        st.text(
+            "주제: 상황에 맞는 학습 공간 선택법\n"
+            "세부 내용 계획\n"
+            "  [장면 1] 쉬운 과제를 할 때\n"
+            "  - 시각 요소: 사람들이 적당히 붐비고 활기찬 분위기의 도서관이나 커피숍 전경을 보여줌.\n"
+            "  - 청각 요소: 사람들이 나지막하게 속삭이는 소리, 백색 소음, 경쾌한 느낌의 배경음악을 깔아줌.\n"
+            "  [장면 2] 어려운 과제를 할 때\n"
+            "  - 시각 요소: (  A  )\n"
+            "  - 청각 요소: (  B  )"
+        )
+        
+    with st.container(border=True):
+        st.write("📋 작성 조건")
+        st.caption("⚠️ 윗글을 참고하여 어려운 과제를 할 때 필요한 환경의 특성이 잘 드러나도록 연출 계획을 세울 것.")
+        st.caption("⚠️ 자신이 설정한 시각 및 청각 요소가 글의 내용을 전달하는 데 어떤 효과가 있는지 각각 서술할 것.")
+
+    st.write("답안 작성 틀")
+    col_si, col_au = st.columns(2)
+    with col_si:
+        st.markdown("**[시각 요소 A]**")
+        q3_si = st.text_input("연출 계획:")
+        q3_si_eff = st.text_area("효과 서술:")
+    with col_au:
+        st.markdown("**[청각 요소 B]**")
+        q3_au = st.text_input("연출 계획:")
+        q3_au_eff = st.text_area("효과 서술:")
+
+    if st.button("🚀 자동 채점 실행"):
+        scores = {}
+        feedbacks = {}
+        
+        if check_synonyms(q1_1, "혼자") and ("집중" in q1_1 or "시간" in q1_1):
+            scores["서논술형 1번의 1"] = 2; feedbacks["서논술형 1번의 1"] = "정확한 해결 방식 요약입니다."
+        else: scores["서논술형 1번의 1"] = 0; feedbacks["서논술형 1번의 1"] = "혼자 차분히 집중한다는 개념이 누락되었습니다."
+
+        if "억제" in q1_2:
+            scores["서논술형 1번의 2"] = 2; feedbacks["서논술형 1번의 2"] = "정확한 심리학 용어입니다."
+        else: scores["서논술형 1번의 2"] = 0; feedbacks["서논술형 1번의 2"] = "정답 용어인 사회적 억제가 아닙니다."
+            
+        # 1번 문항의 3번 처리 로직 예외 방지 고정
+        scores["서논술형 1번의 3"] = 2 if "억제" in q1_3 else 0
+        feedbacks["서논술형 1번의 3"] = "심리학 용어 일치" if scores["서논술형 1번의 3"] == 2 else "사회적 억제 용어를 확인하세요."
+
+        def eval_q2(text):
+            m = re.search(r'\(([^)]+)\)', text)
+            if not m: return 0, "괄호 안에 설명 방법 명칭이 누락되었습니다."
+            clean = re.sub(r'\(.*?\)', '', text)
+            if "쉬운" in clean and check_synonyms(clean, "혼자"): return 0, "오개념 오류가 발견되었습니다. 쉬운 과제는 함께 해야 효과적입니다."
+            if "어려운" in clean and check_synonyms(clean, "함께"): return 0, "오개념 오류가 발견되었습니다. 어려운 과제는 혼자 해야 합니다."
+            if "예시" in m.group(1) and any(x in clean for x in ["예를 들어", "예로"]): return 4, "예시 조건 충족함"
+            if "대조" in m.group(1) and any(x in clean for x in ["반면", "달리"]): return 4, "대조 조건 충족함"
+            return 2, "의미는 맞으나 설명 방법 표현 형식이 미흡합니다."
+
+        scores["서논술형 2번의 1"] = eval_q2(q2_1)[0]; feedbacks["서논술형 2번의 1"] = eval_q2(q2_1)[1]
+        scores["서논술형 2번의 2"] = eval_q2(q2_2)[0]; feedbacks["서논술형 2번의 2"] = eval_q2(q2_2)[1]
+
+        scores["서논술형 3번 시각"] = 3 if check_synonyms(q3_si, "혼자") and "환경" in q3_si_eff else 0
+        feedbacks["서논술형 3번 시각"] = "시각 연출 및 내용 전달 효과 서술이 우수합니다." if scores["서논술형 3번 시각"] == 3 else "어려운 과제 조건(혼자 집중)이 미반영되었거나 효과 서술이 추상적입니다."
+
+        scores["서논술형 3번 청각"] = 3 if any(x in q3_au for x in ["끄", "묵음", "조용"]) and "몰입" in q3_au_eff else 0
+        feedbacks["서논술형 3번 청각"] = "청각 연출 및 집중 효과 조건에 부합합니다." if scores["서논술형 3번 청각"] == 3 else "청각적 정적 연출이 미흡하거나 효과 서술이 부족합니다."
+
+        st.success("채점 결과 보고서")
+        st.metric("총점 (20점 만점)", f"{sum(scores.values())}점")
+        for k in scores.keys():
+            st.write(f"{k} 결과: {scores[k]}점 | {feedbacks[k]}")
+
+elif set_choice == "2세트: 겨울철 불청객 정전기":
+    st.markdown(blue_box_style + """
+    기자: 겨울철 불청객인 정전기란 정확히 무엇인지 설명 부탁드립니다.<br>
+    전문가: 정전기란 전하가 정지 상태로 있어 그 분포가 시간적으로 변화하지 않는 전기, 그리고 그로 인한 전기 현상을 말합니다. 쉽게 설명하면 흐르지 않고 머물러 있는 전기라고 해서 움직이지 아니하여 조용하다는 뜻을 가진 한자 '정'을 써서 정전기라고 부르는 것이죠.<br>
+    기자: 우리가 실생활에서 쓰는 전기와는 어떻게 다른가요? 물에 비유해서 설명해 주시면 이해가 쉬울 것 같습니다.<br>
+    전문가: 아주 좋은 비유가 될 수 있습니다. 우리가 실생활에서 쓰는 전기가 '흐르는 물'이라면, 정전기는 '높은 곳에 고여 있는 물'이라고 할 수 있습니다.<br>
+    기자: 정전기가 일어날 때 찌릿한 느낌이 드는데, 혹시 위험하지는 않은가요?<br>
+    전문가: 정전기의 전압은 매우 높지만, 우리가 실생활에서 쓰는 전기와는 다르게 전하가 이동하지 않고 머물러 있어 위험하지는 않습니다. 어마어마하게 높은 곳에 고여 있는 물이지만 떨어지지 않고 있어서 별 피해가 없는 것과 같다고 이해하시면 됩니다.
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.divider()
+    st.markdown("### 서논술형 문항 풀이")
+
+    st.write("서논술형 1. 윗글을 요약하여 표로 정리하였다. 빈칸 (1), (2), (3)에 들어갈 내용을 찾아 쓰시오.")
+    st.markdown("""
+    | 구분 | 물의 상태에 비유 | 전하의 상태 | 위험성 유무 |
+    | :---: | :--- | :--- | :--- |
+    | 실생활 전기 | 흐르는 물 | 전하가 이동함 | 위험함 |
+    | 정전기 | (1) | (2) | (3) |
+    """)
+    
+    col1, col2, col3 = st.columns(3)
+    with col1: q1_1 = st.text_input("(1) 빈칸 입력:")
+    with col2: q1_2 = st.text_input("(2) 빈칸 입력:")
+    with col3: q1_3 = st.text_input("(3) 빈칸 입력:")
+
+    st.divider()
+    st.write("서논술형 2. 윗글을 활용하여 정전기의 특징에 대한 설명문을 작성하려 한다. 조건에 맞게 주어진 첫 문장에 이어지는 내용을 작성하시오.")
+    st.info("겨울철에 흔히 겪는 정전기는 우리가 평소 집에서 사용하는 전기와는 다른 뚜렷한 특징이 있다.")
+    
+    with st.container(border=True):
+        st.write("📋 작성 조건")
+        st.caption("⚠️ 서로 다른 2가지의 설명 방법을 사용하여, 주어진 문장에 이어지는 문장을 (1), (2)에 각각 하나씩 작성할 것.")
+        st.caption("⚠️ 각 문장의 끝에 자신이 사용한 설명 방법의 명칭을 괄호에 넣어 표기할 것.")
+
+    q2_1 = st.text_area("(1)")
+    q2_2 = st.text_area("(2)")
+
+    if st.button("🚀 자동 채점 실행"):
+        scores = {}
+        feedbacks = {}
+        
+        if "고여" in q1_1 and "물" in q1_1: scores["서1-1"] = 2; feedbacks["서1-1"] = "정확합니다."
+        else: scores["서1-1"] = 0; feedbacks["서1-1"] = "비유 대상(고여 있는 물) 오기입니다."
+        
+        if check_synonyms(q1_2, "정지"): scores["서1-2"] = 2; feedbacks["서1-2"] = "정확합니다."
+        else: scores["서1-2"] = 0; feedbacks["서1-2"] = "전하의 상태 설명이 부족합니다."
+            
+        if "위험하지" in q1_3 or "피해" in q1_3: scores["서1-3"] = 2; feedbacks["서1-3"] = "정확합니다."
+        else: scores["서1-3"] = 0; feedbacks["서1-3"] = "위험성 정보 오류입니다."
+
+        st.success("채점 결과 보고서")
+        st.metric("총점 (6점 만점)", f"{sum(scores.values())}점")
+        for k in scores.keys(): st.write(f"{k} 결과: {scores[k]}점 | {feedbacks[k]}")
+
+else: 
+    st.markdown(blue_box_style + """
+    기자: 우리가 세상을 살아가는 방식을 음식에 비유하여 설명해 주신다고 들었습니다. 이 둘은 어떤 점이 비슷한가요?<br>
+    전문가: 네, 음식을 맛보는 일은 사는 일과 비슷합니다. 둘 다 사람에 따라 달라질 수 있지요. 사람마다 같은 음식을 먹어도 맛을 다르게 느끼듯, 같은 경험을 해도 다른 감정으로 받아들일 수 있으니까요.<br>
+    기자: 사람마다 받아들이는 방식이 다르다는 뜻이군요. 또 다른 공통점이 있을까요?<br>
+    전문가: 네. 바로 '천천히 음미하는 시간이 필요하다'는 점에서도 비슷합니다. 음식을 먹을 때 마구 삼켜서는 맛을 제대로 느낄 수 없죠. 천천히 음미하며 먹어야 맛의 다채로움을 느낄 수 있습니다.<br>
+    기자: 우리가 사는 세상의 다채로움을 느끼는 것도 이와 같다는 말씀이시군요.<br>
+    전문가: 맞습니다. 모든 사람과 풍경, 그 속의 아름다움을 천천히 음미해야 세상을 제대로 느낄 수 있어요. 그냥 빠르게 달리기만 해서는 이들을 포착하고 느낄 수 없답니다.
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.divider()
+    st.markdown("### 서논술형 문항 풀이")
+
+    st.write("서논술형 1. 윗글을 요약하여 표로 정리하였다. 빈칸 (1), (2), (3)에 들어갈 내용을 찾아 쓰시오.")
+    st.markdown("""
+    | 구분 | 음식을 맛보는 일 | 세상을 살아가는 일 |
+    | :---: | :--- | :--- |
+    | 개인적 차이 | 사람마다 맛을 다르게 느낌 | (1) |
+    | 필요한 태도 | 천천히 음미하며 먹어야 함 | (2) |
+    | 태도가 없을 때 결과 | (3) | 빠르게 달리기만 해서는 아름다움을 포착할 수 없음 |
+    """)
+    
+    col1, col2, col3 = st.columns(3)
+    with col1: q1_1 = st.text_input("(1) 빈칸 입력:")
+    with col2: q1_2 = st.text_input("(2) 빈칸 입력:")
+    with col3: q1_3 = st.text_input("(3) 빈칸 입력:")
+
+    st.divider()
+    st.write("서논술형 3. 윗글을 바탕으로 삶을 대하는 올바른 태도를 설명하는 영상을 제작하려 한다. 물음에 답하시오.")
+    with st.container(border=True):
+        st.write("✨ 보기 - 영상 기획안")
+        st.text(
+            "주제: 세상을 천천히 음미하며 살아가는 것의 가치\n"
+            "세부 내용 계획\n"
+            "  [장면 1] 빠르게 달리는 삶\n"
+            "  - 시각 요소: 배속을 빠르게 돌려 회색빛 도시 거리를 보여줌.\n"
+            "  - 청각 요소: 시계 초침 소리가 매우 빠르고 날카롭게 째깍거림.\n"
+            "  [장면 2] 천천히 음미하는 삶\n"
+            "  - 시각 요소: (  A  )\n"
+            "  - 청각 요소: (  B  )"
+        )
+
+    col_si, col_au = st.columns(2)
+    with col_si:
+        st.markdown("**[시각 요소 A]**")
+        q3_si = st.text_input("연출 계획:")
+        q3_si_eff = st.text_area("효과 서술:")
+    with col_au:
+        st.markdown("**[청각 요소 B]**")
+        q3_au = st.text_input("연출 계획:")
+        q3_au_eff = st.text_area("효과 서술:")
+
+    if st.button("🚀 자동 채점 실행"):
+        scores = {}
+        feedbacks = {}
+        
+        if "다르게" in q1_1 or "차이" in q1_1: scores["서1-1"] = 2; feedbacks["서1-1"] = "통과"
+        else: scores["서1-1"] = 0; feedbacks["서1-1"] = "오답"
+            
+        if check_synonyms(q1_2, "음미"): scores["서1-2"] = 2; feedbacks["서1-2"] = "통과"
+        else: scores["서1-2"] = 0; feedbacks["서1-2"] = "오답"
+            
+        if "느낄 수 없다" in q1_3 or "삼켜" in q1_3: scores["서1-3"] = 2; feedbacks["서1-3"] = "통과"
+        else: scores["서1-3"] = 0; feedbacks["서1-3"] = "오답"
+
+        scores["서3-시각"] = 3 if ("아름다움" in q3_si_eff or "다채로움" in q3_si_eff) else 0
+        feedbacks["서3-시각"] = "결론 방향성 충족" if scores["서3-시각"] == 3 else "아름다움 포착 등의 최종 가치 서술 누락"
+
+        scores["서3-청각"] = 3 if ("여유" in q3_au_eff or "편안" in q3_au_eff) else 0
+        feedbacks["서3-청각"] = "청각 효과 통과" if scores["서3-청각"] == 3 else "정서적 여유 관련 효과 서술 미흡"
+
+        st.success("채점 결과 보고서")
+        st.metric("총점 (10점 만점)", f"{sum(scores.values())}점")
+        for k in scores.keys(): st.write(f"{k} 결과: {scores[k]}점 | {feedbacks[k]}")
